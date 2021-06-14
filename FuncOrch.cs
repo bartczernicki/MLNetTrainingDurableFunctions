@@ -171,7 +171,7 @@ namespace MLNetTrainingDurableFunctions
 #if RELEASE
             log.LogInformation($"Orchestrator - Release Mode (full data).");
 #else
-            baseBallPlayers = baseBallPlayers.Take(20).ToList();
+            baseBallPlayers = baseBallPlayers.Take(50).ToList();
 #endif
 
             baseballPlayersCount = baseBallPlayers.Count;
@@ -185,10 +185,12 @@ namespace MLNetTrainingDurableFunctions
 
             await Task.WhenAll(tasks);
 
+            // Count up performance matrix
             var tps = tasks.Count(t => t.Result == "TP");
             var tns = tasks.Count(t => t.Result == "TN");
             var fps = tasks.Count(t => t.Result == "FP");
             var fns = tasks.Count(t => t.Result == "FN");
+            var empty = tasks.Count(t => t.Result == string.Empty);
 
             // var correctPredictionsMessage = "Orchestrator - Number of Correct Predictions: " + numberOfCorrectPredictions.ToString();
             log.LogInformation($"Orchestrator - Prredictions Matrix: TP:{tps} TN:{tns} FP:{fps} FN:{fns}.");
@@ -236,7 +238,7 @@ namespace MLNetTrainingDurableFunctions
                 // Build simple data pipeline
                 var learingPipeline =
                     baselineTransform.Append(
-                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: 200, learningRate: 0.01, maximumBinCountPerFeature: 150)
+                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: 250, learningRate: 0.01, maximumBinCountPerFeature: 200)
                     );
                 log.LogInformation($"TrainModel - Created Pipeline validating MLB Batter {batter.ID} - {batter.FullPlayerName}.");
 
@@ -263,7 +265,7 @@ namespace MLNetTrainingDurableFunctions
                 }
                 else if (!batter.OnHallOfFameBallot && prediction.Probability >= 0.5f)
                 {
-                    predictionResult = "RP";
+                    predictionResult = "FP";
                 }
 
                 log.LogInformation($"TrainModel - Prediction for MLB Batter {batter.ID} - {batter.FullPlayerName} ||" +
