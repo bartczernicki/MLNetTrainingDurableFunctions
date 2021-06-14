@@ -166,12 +166,12 @@ namespace MLNetTrainingDurableFunctions
             var baseBallPlayers = await context.CallActivityAsync<List<MLBBaseballBatter>>(
                 "BaseballFunc_GetMLBBatters", null);
 
-            var tasks = new List<Task<bool>>();
+            var tasks = new List<Task<string>>();
 
 #if RELEASE
             log.LogInformation($"Orchestrator - Release Mode (full data).");
 #else
-            baseBallPlayers = baseBallPlayers.Take(10).ToList();
+            baseBallPlayers = baseBallPlayers.Take(20).ToList();
 #endif
 
             baseballPlayersCount = baseBallPlayers.Count;
@@ -180,14 +180,18 @@ namespace MLNetTrainingDurableFunctions
             foreach (var baseBallBatter in baseBallPlayers)
             {
                 // Add Train Model function activity
-                tasks.Add(context.CallActivityAsync<bool>("BaseballFunc_TrainModel", input: baseBallBatter));
+                tasks.Add(context.CallActivityAsync<string>("BaseballFunc_TrainModel", input: baseBallBatter));
             }
 
             await Task.WhenAll(tasks);
 
-            numberOfCorrectPredictions = tasks.Count(t => t.Result == true);
+            var tps = tasks.Count(t => t.Result == "TP");
+            var tns = tasks.Count(t => t.Result == "TN");
+            var fps = tasks.Count(t => t.Result == "FP");
+            var fns = tasks.Count(t => t.Result == "FN");
+
             // var correctPredictionsMessage = "Orchestrator - Number of Correct Predictions: " + numberOfCorrectPredictions.ToString();
-            log.LogInformation($"Orchestrator - Number of Correct Predictions: {numberOfCorrectPredictions} of {baseballPlayersCount}.");
+            log.LogInformation($"Orchestrator - Prredictions Matrix: TP:{tps} TN:{tns} FP:{fps} FN:{fns}.");
 
             return numberOfCorrectPredictions;
         }
@@ -210,7 +214,7 @@ namespace MLNetTrainingDurableFunctions
         }
 
         [FunctionName("BaseballFunc_TrainModel")]
-        public static bool MLNetTrainingTrainModel([ActivityTrigger] MLBBaseballBatter batter, ILogger log)
+        public static string MLNetTrainingTrainModel([ActivityTrigger] MLBBaseballBatter batter, ILogger log)
         {
             log.LogInformation($"TrainModel - Processing MLB Batter {batter.ID} - {batter.FullPlayerName}.");
 
@@ -243,19 +247,35 @@ namespace MLNetTrainingDurableFunctions
                 var prediction = predictionEngine.Predict(batter);
                 log.LogInformation($"TrainModel - Prediction for MLB Batter {batter.ID} - {batter.FullPlayerName} || {prediction.Probability}");
 
-                var validPrediction = (batter.OnHallOfFameBallot && prediction.Probability >= 0.5f) ? true :
-                    ((!batter.OnHallOfFameBallot && prediction.Probability < 0.5f) ? true : false);
+                string predictionResult = string.Empty;
+
+                if (batter.OnHallOfFameBallot && prediction.Probability >= 0.5f)
+                {
+                    predictionResult = "TP";
+                }
+                else if (batter.OnHallOfFameBallot && prediction.Probability < 0.5f)
+                {
+                    predictionResult = "FN";
+                }
+                else if (!batter.OnHallOfFameBallot && prediction.Probability < 0.5f)
+                {
+                    predictionResult = "TN";
+                }
+                else if (!batter.OnHallOfFameBallot && prediction.Probability >= 0.5f)
+                {
+                    predictionResult = "RP";
+                }
 
                 log.LogInformation($"TrainModel - Prediction for MLB Batter {batter.ID} - {batter.FullPlayerName} ||" +
-                    $" OnHallOfFameBallot: {batter.OnHallOfFameBallot}, Does it Match pred: {validPrediction}");
+                    $" OnHallOfFameBallot: {batter.OnHallOfFameBallot}, Prediction Result: {predictionResult}");
 
-                return validPrediction;
+                return predictionResult;
             }
             else
             {
                 log.LogInformation($"TrainModel - Batters data NULL.");
 
-                return false;
+                return string.Empty;
             }
 
 
