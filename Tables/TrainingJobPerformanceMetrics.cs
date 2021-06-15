@@ -30,5 +30,7 @@ namespace MLNetTrainingDurableFunctions.Tables
         public double Precision { get; set; }
 
         public double Recall { get; set; }
+
+        public double MCCScore { get; set; }
     }
 }
