@@ -169,7 +169,7 @@ namespace MLNetTrainingDurableFunctions
 
         [FunctionName("BaseballFunc_CalculatePerformanceMetrics")]
         public static async Task<string> MLNetTrainingCalculatePerformanceMetrics([ActivityTrigger] List<string> modelTrainResults,
-            [Table("performancemetrics")] CloudTable performanceMetricsTable,
+            [Table("TrainingPerformanceMetrics")] CloudTable performanceMetricsTable,
             ILogger log)
         {
             log.LogInformation($"CalculatePerformanceMetrics - Calculating Performance Results...");
@@ -181,6 +181,10 @@ namespace MLNetTrainingDurableFunctions
             var fns = modelTrainResults.Count(t => t == "FN");
             var empty = modelTrainResults.Count(t => t == string.Empty);
 
+            var accuracy = (tps + tns)*1.0 / (tps + tns + fps + fns);
+            var recall = (tps) * 1.0 / (tps + fns);
+            var precision = (tps) * 1.0 / (tps + fps);
+
 
             var performanceMetricsEntity = new TrainingJobPerformanceMetrics("Test", "Gam");
             performanceMetricsEntity.HyperParameters = "200;0.05;200";
@@ -188,6 +192,9 @@ namespace MLNetTrainingDurableFunctions
             performanceMetricsEntity.TrueNegatives = tns;
             performanceMetricsEntity.FalseNegatives = fns;
             performanceMetricsEntity.FalsePositives = fps;
+            performanceMetricsEntity.Accuracy = accuracy;
+            performanceMetricsEntity.Precision = precision;
+            performanceMetricsEntity.Recall = recall;
 
             // Persist in Azure Table Storage
             var addEntryOperation = TableOperation.InsertOrReplace(performanceMetricsEntity);

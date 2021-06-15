@@ -24,5 +24,11 @@ namespace MLNetTrainingDurableFunctions.Tables
         public int FalsePositives { get; set; }
 
         public int FalseNegatives { get; set; }
+
+        public double Accuracy { get; set; }
+
+        public double Precision { get; set; }
+
+        public double Recall { get; set; }
     }
 }
