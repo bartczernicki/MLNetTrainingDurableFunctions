@@ -65,7 +65,7 @@ namespace MLNetTrainingDurableFunctions
 #if RELEASE
             log.LogInformation($"Orchestrator - Release Mode (full data).");
 #else
-            baseBallPlayers = baseBallPlayers.Take(50).ToList();
+            baseBallPlayers = baseBallPlayers.Take(100).ToList();
 #endif
 
             baseballPlayersCount = baseBallPlayers.Count;

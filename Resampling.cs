@@ -22,7 +22,7 @@ namespace MLNetTrainingDurableFunctions
 
             for (int i = 0; i != 500; i++)
             {
-                var bootStapSample = new List<string>(50);
+                var bootStapSample = new List<string>(numberOfRecords);
 
                 for (int j = 0; j != numberOfRecords; j++)
                 {
