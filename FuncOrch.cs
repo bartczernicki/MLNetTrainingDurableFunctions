@@ -62,6 +62,7 @@ namespace MLNetTrainingDurableFunctions
 
             var tasks = new List<Task<string>>();
 
+            // For Debug process, smaller list of players. For Release, process full list
 #if RELEASE
             log.LogInformation($"Orchestrator - Release Mode (full data).");
 #else
@@ -77,6 +78,7 @@ namespace MLNetTrainingDurableFunctions
                 tasks.Add(context.CallActivityAsync<string>("BaseballFunc_TrainModel", input: baseBallBatter));
             }
 
+            // Wait for all tasks to finish
             await Task.WhenAll(tasks);
 
             // Count up performance matrix
@@ -86,7 +88,6 @@ namespace MLNetTrainingDurableFunctions
             var fns = tasks.Count(t => t.Result == "FN");
             var empty = tasks.Count(t => t.Result == string.Empty);
 
-            // var correctPredictionsMessage = "Orchestrator - Number of Correct Predictions: " + numberOfCorrectPredictions.ToString();
             log.LogInformation($"Orchestrator - Prredictions Matrix: TP:{tps} TN:{tns} FP:{fps} FN:{fns}.");
 
             return numberOfCorrectPredictions;
@@ -97,12 +98,9 @@ namespace MLNetTrainingDurableFunctions
         {
             log.LogInformation($"GetMLBBatters - Getting MLB Baseball Batters...");
 
+            // Retrieve the Baseball Data
             var baseBallData = baseBallDataService.GetTrainingBaseballData();
             baseBallBatters = baseBallData.Result;
-
-            // Place in-memory Cache
-            //CacheItemPolicy policy = new CacheItemPolicy();
-            //memoryCacheTest.Set("MLBBaseballBatters", value: baseBallBatters, policy);
 
             log.LogInformation($"GetMLBBatters - Finished Getting MLB Baseball Batters: {baseBallBatters}.");
 

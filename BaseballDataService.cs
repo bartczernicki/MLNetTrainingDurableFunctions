@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -28,8 +29,7 @@ namespace MLNetTrainingDurableFunctions
             }
         }
 
-        public IEnumerable<string> ReadLines(Func<Stream> streamProvider,
-                             Encoding encoding)
+        public IEnumerable<string> ReadLines(Func<Stream> streamProvider, Encoding encoding)
         {
             using (var stream = streamProvider())
             using (var reader = new StreamReader(stream, encoding))
@@ -54,6 +54,14 @@ namespace MLNetTrainingDurableFunctions
             return resource;
         }
 
+        public static async Task<Stream> GetBaseballDataStreamFromGitHub()
+        {
+            var httpClient = new HttpClient();
+            var request = await httpClient.GetStreamAsync("https://raw.githubusercontent.com/bartczernicki/BaseballData/main/data/MLBBaseballBattersFullTraining.csv");
+
+            return request;
+        }
+
         public Task<List<MLBBaseballBatter>> GetTrainingBaseballData()
         {
             // Return sample baseball players (batters)
@@ -65,7 +73,11 @@ namespace MLNetTrainingDurableFunctions
 
             // Load MLB baseball batters from local CSV file
 
+#if RELEASE
+            var lines = ReadLines(() => GetBaseballDataStreamFromGitHub().Result, Encoding.UTF8);
+#else
             var lines = ReadLines(() => GetBaseballDataStream(), Encoding.UTF8);
+#endif
 
             var batters = lines
                         .Skip(1)
