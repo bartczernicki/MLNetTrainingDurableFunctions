@@ -13,6 +13,8 @@ using System;
 using System.Reflection;
 using Microsoft.ML;
 using Microsoft.ML.Data;
+using Microsoft.Azure.Cosmos.Table;
+using MLNetTrainingDurableFunctions.Tables;
 
 namespace MLNetTrainingDurableFunctions
 {
@@ -22,7 +24,6 @@ namespace MLNetTrainingDurableFunctions
 
         // Info Variables
         private static int baseballPlayersCount = 0;
-        private static int numberOfCorrectPredictions = 0;
         private static List<MLBBaseballBatter> baseBallBatters;
 
         // Thread-safe ML Context
@@ -30,13 +31,12 @@ namespace MLNetTrainingDurableFunctions
 
         // BaseballDataService 
         private static BaseballDataSampleService baseBallDataService = BaseballDataSampleService.Instance;
-        //private static DataViewSchema mlbBattersSchema;
 
         // Model Features
         private static string[] featureColumns = new string[] {
             "YearsPlayed", "AB", "R", "H", "Doubles", "Triples", "HR", "RBI", "SB",
             "BattingAverage", "SluggingPct", "AllStarAppearances", "TB", "TotalPlayerAwards"
-            // Other Features
+            // Other Features (Optional)
             /*, "MVPs", "TripleCrowns", "GoldGloves", "MajorLeaguePlayerOfTheYearAwards"*/
         };
 
@@ -57,8 +57,7 @@ namespace MLNetTrainingDurableFunctions
         [FunctionName("BaseballFunc_Orchestrator")]
         public static async Task<int> MLNetTrainingOrchestrator([OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
-            var baseBallPlayers = await context.CallActivityAsync<List<MLBBaseballBatter>>(
-                "BaseballFunc_GetMLBBatters", null);
+            var baseBallPlayers = await context.CallActivityAsync<List<MLBBaseballBatter>>("BaseballFunc_GetMLBBatters", null);
 
             var tasks = new List<Task<string>>();
 
@@ -80,17 +79,12 @@ namespace MLNetTrainingDurableFunctions
 
             // Wait for all tasks to finish
             await Task.WhenAll(tasks);
+            var trainModelResults = tasks.Select(a => a.Result).ToList();
 
-            // Count up performance matrix
-            var tps = tasks.Count(t => t.Result == "TP");
-            var tns = tasks.Count(t => t.Result == "TN");
-            var fps = tasks.Count(t => t.Result == "FP");
-            var fns = tasks.Count(t => t.Result == "FN");
-            var empty = tasks.Count(t => t.Result == string.Empty);
+            // Calculate performance metrics
+            var result = await context.CallActivityAsync<List<MLBBaseballBatter>>("BaseballFunc_CalculatePerformanceMetrics", trainModelResults);
 
-            log.LogInformation($"Orchestrator - Prredictions Matrix: TP:{tps} TN:{tns} FP:{fps} FN:{fns}.");
-
-            return numberOfCorrectPredictions;
+            return 1;
         }
 
         [FunctionName("BaseballFunc_GetMLBBatters")]
@@ -130,7 +124,7 @@ namespace MLNetTrainingDurableFunctions
                 // Build simple data pipeline
                 var learingPipeline =
                     baselineTransform.Append(
-                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: 250, learningRate: 0.01, maximumBinCountPerFeature: 200)
+                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: 200, learningRate: 0.05, maximumBinCountPerFeature: 200)
                     );
                 log.LogInformation($"TrainModel - Created Pipeline validating MLB Batter {batter.ID} - {batter.FullPlayerName}.");
 
@@ -171,6 +165,38 @@ namespace MLNetTrainingDurableFunctions
 
                 return string.Empty;
             }
+        }
+
+        [FunctionName("BaseballFunc_CalculatePerformanceMetrics")]
+        public static async Task<string> MLNetTrainingCalculatePerformanceMetrics([ActivityTrigger] List<string> modelTrainResults,
+            [Table("performancemetrics")] CloudTable performanceMetricsTable,
+            ILogger log)
+        {
+            log.LogInformation($"CalculatePerformanceMetrics - Calculating Performance Results...");
+
+            // Count up performance matrix
+            var tps = modelTrainResults.Count(t => t == "TP");
+            var tns = modelTrainResults.Count(t => t == "TN");
+            var fps = modelTrainResults.Count(t => t == "FP");
+            var fns = modelTrainResults.Count(t => t == "FN");
+            var empty = modelTrainResults.Count(t => t == string.Empty);
+
+
+            var performanceMetricsEntity = new TrainingJobPerformanceMetrics("Test", "Gam");
+            performanceMetricsEntity.HyperParameters = "200;0.05;200";
+            performanceMetricsEntity.TruePositives = tps;
+            performanceMetricsEntity.TrueNegatives = tns;
+            performanceMetricsEntity.FalseNegatives = fns;
+            performanceMetricsEntity.FalsePositives = fps;
+
+            // Persist in Azure Table Storage
+            var addEntryOperation = TableOperation.InsertOrReplace(performanceMetricsEntity);
+            performanceMetricsTable.CreateIfNotExists();
+            await performanceMetricsTable.ExecuteAsync(addEntryOperation);
+
+            log.LogInformation($"Orchestrator - Prredictions Matrix: TP:{tps} TN:{tns} FP:{fps} FN:{fns}.");
+
+            return string.Empty;
         }
     }
 }
