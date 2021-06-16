@@ -124,7 +124,7 @@ namespace MLNetTrainingDurableFunctions
                 // Build simple data pipeline
                 var learingPipeline =
                     baselineTransform.Append(
-                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: 100, learningRate: 0.05, maximumBinCountPerFeature: 100)
+                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: 75, learningRate: 0.05, maximumBinCountPerFeature: 75)
                     );
                 log.LogInformation($"TrainModel - Created Pipeline validating MLB Batter {batter.ID} - {batter.FullPlayerName}.");
 
@@ -174,38 +174,28 @@ namespace MLNetTrainingDurableFunctions
         {
             log.LogInformation($"CalculatePerformanceMetrics - Calculating Performance Results...");
 
-            // Count up performance matrix
-            var tps = matrixPerformanceResults.Count(t => t == "TP");
-            var tns = matrixPerformanceResults.Count(t => t == "TN");
-            var fps = matrixPerformanceResults.Count(t => t == "FP");
-            var fns = matrixPerformanceResults.Count(t => t == "FN");
-            var empty = matrixPerformanceResults.Count(t => t == string.Empty);
-
-            var accuracy = (tps + tns)*1.0 / (tps + tns + fps + fns);
-            var recall = (tps) * 1.0 / (tps + fns);
-            var precision = (tps) * 1.0 / (tps + fps);
-            var mccScore = ((tps * tns - fps * fns) * 1.0) / Math.Sqrt(((tps + fps) * (tps + fns) * (tns + fps) * (tns + fns))*1.0);
+            var metrics = new PerformanceMetrics(matrixPerformanceResults);
 
             var performanceMetricsEntity = new TrainingJobPerformanceMetrics("Test", "Gam");
-            performanceMetricsEntity.HyperParameters = "100;0.05;100";
-            performanceMetricsEntity.TruePositives = tps;
-            performanceMetricsEntity.TrueNegatives = tns;
-            performanceMetricsEntity.FalseNegatives = fns;
-            performanceMetricsEntity.FalsePositives = fps;
-            performanceMetricsEntity.Accuracy = accuracy;
-            performanceMetricsEntity.Precision = precision;
-            performanceMetricsEntity.Recall = recall;
-            performanceMetricsEntity.MCCScore = mccScore;
+            performanceMetricsEntity.HyperParameters = "75;0.05;75";
+            performanceMetricsEntity.TruePositives = metrics.TruePositives;
+            performanceMetricsEntity.TrueNegatives = metrics.TrueNegatives;
+            performanceMetricsEntity.FalseNegatives = metrics.FalseNegatives;
+            performanceMetricsEntity.FalsePositives = metrics.FalsePositives;
+            performanceMetricsEntity.Accuracy = metrics.Accuracy;
+            performanceMetricsEntity.Precision = metrics.Precsion;
+            performanceMetricsEntity.Recall = metrics.Recall;
+            performanceMetricsEntity.MCCScore = metrics.MCCScore;
 
             // Persist in Azure Table Storage
             var addEntryOperation = TableOperation.InsertOrReplace(performanceMetricsEntity);
             performanceMetricsTable.CreateIfNotExists();
             await performanceMetricsTable.ExecuteAsync(addEntryOperation);
 
-            Resampling.GenerateBootstrapSample(matrixPerformanceResults.Count, matrixPerformanceResults);
+            Resampling.GenerateBootstrapSample(matrixPerformanceResults);
 
-            log.LogInformation($"Orchestrator - Predictions Matrix: TP:{tps} TN:{tns} FP:{fps} FN:{fns}.");
-            log.LogInformation($"Orchestrator - Performance Metrics: MCC Score:{mccScore} Precision:{precision} Recall:{recall}.");
+            log.LogInformation($"Orchestrator - Predictions Matrix: TP:{metrics.TruePositives} TN:{metrics.TrueNegatives} FP:{metrics.FalsePositives} FN:{metrics.FalseNegatives}.");
+            log.LogInformation($"Orchestrator - Performance Metrics: MCC Score:{metrics.MCCScore} Precision:{metrics.Precsion} Recall:{metrics.Recall}.");
 
             return string.Empty;
         }

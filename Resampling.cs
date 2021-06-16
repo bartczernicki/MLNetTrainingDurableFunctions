@@ -10,7 +10,7 @@ namespace MLNetTrainingDurableFunctions
 {
     public static class Resampling
     {
-        public static List<string> GenerateBootstrapSample(int numberOfRecords, List<string> empiricalMatrix)
+        public static List<string> GenerateBootstrapSample(List<string> empiricalMatrix)
         {
             List<string> bootStrapSample = new List<string>();
 
@@ -22,11 +22,11 @@ namespace MLNetTrainingDurableFunctions
 
             for (int i = 0; i != 500; i++)
             {
-                var bootStapSample = new List<string>(numberOfRecords);
+                var bootStapSample = new List<string>(empiricalMatrix.Count);
 
-                for (int j = 0; j != numberOfRecords; j++)
+                for (int j = 0; j != empiricalMatrix.Count; j++)
                 {
-                    var randomSelectedRecordIndex = random.Next(0, numberOfRecords - 1);
+                    var randomSelectedRecordIndex = random.Next(0, empiricalMatrix.Count - 1);
                     var selectedRecord = empiricalMatrix[randomSelectedRecordIndex];
                     bootStapSample.Add(selectedRecord);
                 }
