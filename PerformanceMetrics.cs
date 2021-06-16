@@ -8,9 +8,13 @@ namespace MLNetTrainingDurableFunctions
     public class PerformanceMetrics
     {
         int tps, tns, fps, fns = 0;
+        List<string> performanceMatrix = new List<string>(100);
 
         public PerformanceMetrics(List<string> performanceMatrix)
         {
+            this.performanceMatrix = performanceMatrix;
+
+            // Calculate counts of each metric
             this.tps = performanceMatrix.Count(t => t == "TP");
             this.tns = performanceMatrix.Count(t => t == "TN");
             this.fps = performanceMatrix.Count(t => t == "FP");
