@@ -186,6 +186,10 @@ namespace MLNetTrainingDurableFunctions
             performanceMetricsEntity.Precision = metrics.Precsion;
             performanceMetricsEntity.Recall = metrics.Recall;
             performanceMetricsEntity.MCCScore = metrics.MCCScore;
+            performanceMetricsEntity.AccuracyStandardDeviation = metrics.AccuracyBootStrapStandardDeviation;
+            performanceMetricsEntity.PrecisionStandardDeviation = metrics.PrecisionBootStrapStandardDeviation;
+            performanceMetricsEntity.RecallStandardDeviation = metrics.RecallBootStrapStandardDeviation;
+            performanceMetricsEntity.MCCScoreStandardDeviation = metrics.MCCScoreStandardDeviation;
 
             // Persist in Azure Table Storage
             var addEntryOperation = TableOperation.InsertOrReplace(performanceMetricsEntity);

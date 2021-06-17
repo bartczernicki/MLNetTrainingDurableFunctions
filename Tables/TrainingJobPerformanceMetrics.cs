@@ -32,5 +32,13 @@ namespace MLNetTrainingDurableFunctions.Tables
         public double Recall { get; set; }
 
         public double MCCScore { get; set; }
+
+        public double AccuracyStandardDeviation { get; set; }
+
+        public double PrecisionStandardDeviation { get; set; }
+
+        public double RecallStandardDeviation { get; set; }
+
+        public double MCCScoreStandardDeviation { get; set; }
     }
 }
