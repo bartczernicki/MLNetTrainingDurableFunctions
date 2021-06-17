@@ -32,6 +32,15 @@ namespace MLNetTrainingDurableFunctions
         // BaseballDataService 
         private static BaseballDataSampleService baseBallDataService = BaseballDataSampleService.Instance;
 
+        // Gam Algorithm HyperParameters
+#if RELEASE
+        private static int numberOfIterations = 1000, maximumBinCountPerFeature = 500;
+        private static double learningRate = 0.001;
+#else
+        private static int numberOfIterations = 75, maximumBinCountPerFeature = 75;
+        private static double learningRate = 0.05;
+#endif
+
         // Model Features
         private static string[] featureColumns = new string[] {
             "YearsPlayed", "AB", "R", "H", "Doubles", "Triples", "HR", "RBI", "SB",
@@ -122,20 +131,13 @@ namespace MLNetTrainingDurableFunctions
 
                 var labelColunmn = "OnHallOfFameBallot";
 
-#if RELEASE
                 // Build simple data pipeline, with LONGER learning
                 var learingPipeline =
                     baselineTransform.Append(
-                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: 1000, learningRate: 0.001, maximumBinCountPerFeature: 500)
+                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: numberOfIterations, learningRate: learningRate, maximumBinCountPerFeature: maximumBinCountPerFeature)
                     );
-#else
-                // Build complex data pipeline, with SHORTER learning
-                var learingPipeline =
-                    baselineTransform.Append(
-                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: 75, learningRate: 0.05, maximumBinCountPerFeature: 75)
-                    );
-#endif
 
+                log.LogInformation($"TrainModel - Created Pipeline validating Gam Hyperparameters: Iterations: {numberOfIterations} LearningRate:{learningRate} MaxBinCountPerFeature:{maximumBinCountPerFeature}");
                 log.LogInformation($"TrainModel - Created Pipeline validating MLB Batter {batter.ID} - {batter.FullPlayerName}.");
 
                 var model = learingPipeline.Fit(baseBallPlayerDataView);
@@ -188,7 +190,7 @@ namespace MLNetTrainingDurableFunctions
             var metrics = new PerformanceMetrics(matrixPerformanceResults, true, 500);
 
             var performanceMetricsEntity = new TrainingJobPerformanceMetrics("Test", "Gam");
-            performanceMetricsEntity.HyperParameters = "75;0.05;75";
+            performanceMetricsEntity.HyperParameters = $"Iterations: {numberOfIterations} LearningRate:{learningRate} MaxBinCountPerFeature: {maximumBinCountPerFeature}";
             performanceMetricsEntity.TruePositives = metrics.TruePositives;
             performanceMetricsEntity.TrueNegatives = metrics.TrueNegatives;
             performanceMetricsEntity.FalseNegatives = metrics.FalseNegatives;
