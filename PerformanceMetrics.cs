@@ -9,7 +9,7 @@ namespace MLNetTrainingDurableFunctions
     {
         // classification matrix variables
         int tps, tns, fps, fns = 0;
-        double mccScoreStandarddDev, accuracyStandarddDev, precisionStandarddDev, recallStandarddDev = 0.0;
+        double mccScoreStandarddDev, accuracyStandarddDev, precisionStandarddDev, recallStandarddDev, f1ScoresStandardDev = 0.0;
 
         List<string> classificationMatrix = new List<string>(100);
 
@@ -32,6 +32,7 @@ namespace MLNetTrainingDurableFunctions
                 var accuracies = new List<double>(classificationMatrix.Count);
                 var precisions = new List<double>(classificationMatrix.Count);
                 var recalls = new List<double>(classificationMatrix.Count);
+                var f1Scores = new List<double>(classificationMatrix.Count);
 
                 for (int i = 0; i != bootStrapIterations; i++)
                 {
@@ -57,6 +58,8 @@ namespace MLNetTrainingDurableFunctions
                     recalls.Add(recall);
                     var accuracy = PerformanceMetrics.AccuracyCalculation(tps, tns, fps, fns);
                     accuracies.Add(accuracy);
+                    var f1Score = this.F1Score;
+                    accuracies.Add(f1Score);
                 }
 
                 this.mccScoreStandarddDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(mccScores.Where(a => !Double.IsNaN(a)));
@@ -67,13 +70,15 @@ namespace MLNetTrainingDurableFunctions
                 var accuracyAverage = MathNet.Numerics.Statistics.Statistics.Mean(accuracies.Where(a => !Double.IsNaN(a)));
                 this.recallStandarddDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(recalls.Where(a => !Double.IsNaN(a)));
                 var recallAverage = MathNet.Numerics.Statistics.Statistics.Mean(recalls.Where(a => !Double.IsNaN(a)));
+                this.f1ScoresStandardDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(f1Scores.Where(a => !Double.IsNaN(a)));
+                var f1ScoreAverage = MathNet.Numerics.Statistics.Statistics.Mean(f1Scores.Where(a => !Double.IsNaN(a)));
             }
         }
 
         public double Accuracy {
             get
             {
-                return (tps + tns) * 1.0 / (tps + tns + fps + fns);
+                return PerformanceMetrics.AccuracyCalculation(this.tps, this.tns, this.fps, this.fns);
             }
         }
 
@@ -85,11 +90,27 @@ namespace MLNetTrainingDurableFunctions
             }
         }
 
+        public double F1Score
+        {
+            get
+            {
+                return 2.0 * (this.Precsion * this.Recall) / (this.Precsion + this.Recall);
+            }
+        }
+
+        public double F1ScoreStandardDeviation
+        {
+            get
+            {
+                return this.f1ScoresStandardDev;
+            }
+        }
+
         public double MCCScore
         {
             get
             {
-                return ((tps * tns - fps * fns) * 1.0) / Math.Sqrt(((tps + fps) * (tps + fns) * (tns + fps) * (tns + fns)) * 1.0);
+                return PerformanceMetrics.MCCScoreCalculation(this.tps, this.tns, this.fps, this.fns);
             }
         }
 
@@ -101,12 +122,11 @@ namespace MLNetTrainingDurableFunctions
             }
         }
 
-
         public double Precsion
         {
             get
             {
-                return (tps) * 1.0 / (tps + fps);
+                return PerformanceMetrics.PrecisionCalculation(this.tps, this.tns, this.fps, this.fns);
             }
         }
 
@@ -122,7 +142,7 @@ namespace MLNetTrainingDurableFunctions
         {
             get
             {
-                return (tps) * 1.0 / (tps + fns);
+                return PerformanceMetrics.RecallCalculation(this.tps, this.tns, this.fps, this.fns);
             }
         }
 
@@ -189,9 +209,16 @@ namespace MLNetTrainingDurableFunctions
 
         public static double MCCScoreCalculation(int tps, int tns, int fps, int fns)
         {
-            var mccScore = ((tps * tns - fps * fns) * 1.0) / Math.Sqrt(((tps + fps) * (tps + fns) * (tns + fps) * (tns + fns)) * 1.0);
+            var mccNumerator = tps * tns - fps * fns;
+
+            var mccDenominator = Math.Sqrt(
+                1.0 * (tps + fps) * (tps + fns) * (tns + fps) * (tns + fns)
+            );
+
+            var mccScore = mccNumerator / mccDenominator;
 
             return mccScore;
         }
+
     }
 }

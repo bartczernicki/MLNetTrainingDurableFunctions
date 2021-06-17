@@ -33,6 +33,8 @@ namespace MLNetTrainingDurableFunctions.Tables
 
         public double MCCScore { get; set; }
 
+        public double F1Score { get; set; }
+
         public double AccuracyBootStrapStandardDeviation { get; set; }
 
         public double PrecisionBootStrapStandardDeviation { get; set; }
@@ -40,5 +42,7 @@ namespace MLNetTrainingDurableFunctions.Tables
         public double RecallBootStrapStandardDeviation { get; set; }
 
         public double MCCScoreBootStrapStandardDeviation { get; set; }
+
+        public double F1ScoreBootStrapStandardDeviation { get; set; }
     }
 }

@@ -187,17 +187,17 @@ namespace MLNetTrainingDurableFunctions
             performanceMetricsEntity.Precision = metrics.Precsion;
             performanceMetricsEntity.Recall = metrics.Recall;
             performanceMetricsEntity.MCCScore = metrics.MCCScore;
+            performanceMetricsEntity.F1Score = metrics.F1Score;
             performanceMetricsEntity.AccuracyBootStrapStandardDeviation = metrics.AccuracyBootStrapStandardDeviation;
             performanceMetricsEntity.PrecisionBootStrapStandardDeviation = metrics.PrecisionBootStrapStandardDeviation;
             performanceMetricsEntity.RecallBootStrapStandardDeviation = metrics.RecallBootStrapStandardDeviation;
             performanceMetricsEntity.MCCScoreBootStrapStandardDeviation = metrics.MCCScoreStandardDeviation;
+            performanceMetricsEntity.F1ScoreBootStrapStandardDeviation = metrics.F1ScoreStandardDeviation;
 
             // Persist in Azure Table Storage
             var addEntryOperation = TableOperation.InsertOrReplace(performanceMetricsEntity);
             performanceMetricsTable.CreateIfNotExists();
             await performanceMetricsTable.ExecuteAsync(addEntryOperation);
-
-            Resampling.GenerateBootstrapSample(matrixPerformanceResults);
 
             log.LogInformation($"Orchestrator - Predictions Matrix: TP:{metrics.TruePositives} TN:{metrics.TrueNegatives} FP:{metrics.FalsePositives} FN:{metrics.FalseNegatives}.");
             log.LogInformation($"Orchestrator - Performance Metrics: MCC Score:{metrics.MCCScore} Precision:{metrics.Precsion} Recall:{metrics.Recall}.");
