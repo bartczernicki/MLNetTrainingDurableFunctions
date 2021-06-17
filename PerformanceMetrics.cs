@@ -44,6 +44,11 @@ namespace MLNetTrainingDurableFunctions
                         bootStapSample.Add(selectedRecord);
                     }
 
+                    var tps = bootStapSample.Count(t => t == "TP");
+                    var tns = bootStapSample.Count(t => t == "TN");
+                    var fps = bootStapSample.Count(t => t == "FP");
+                    var fns = bootStapSample.Count(t => t == "FN");
+
                     var mccScore = PerformanceMetrics.MCCScoreCalculation(tps, tns, fps, fns);
                     mccScores.Add(mccScore);
                     var precision = PerformanceMetrics.PrecisionCalculation(tps, tns, fps, fns);

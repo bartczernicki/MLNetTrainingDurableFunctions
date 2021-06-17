@@ -174,7 +174,8 @@ namespace MLNetTrainingDurableFunctions
         {
             log.LogInformation($"CalculatePerformanceMetrics - Calculating Performance Results...");
 
-            var metrics = new PerformanceMetrics(matrixPerformanceResults);
+            // Calculate performance metrics & bootstrap standard deviations to calculate confidence intervals
+            var metrics = new PerformanceMetrics(matrixPerformanceResults, true, 500);
 
             var performanceMetricsEntity = new TrainingJobPerformanceMetrics("Test", "Gam");
             performanceMetricsEntity.HyperParameters = "75;0.05;75";
@@ -186,10 +187,10 @@ namespace MLNetTrainingDurableFunctions
             performanceMetricsEntity.Precision = metrics.Precsion;
             performanceMetricsEntity.Recall = metrics.Recall;
             performanceMetricsEntity.MCCScore = metrics.MCCScore;
-            performanceMetricsEntity.AccuracyStandardDeviation = metrics.AccuracyBootStrapStandardDeviation;
-            performanceMetricsEntity.PrecisionStandardDeviation = metrics.PrecisionBootStrapStandardDeviation;
-            performanceMetricsEntity.RecallStandardDeviation = metrics.RecallBootStrapStandardDeviation;
-            performanceMetricsEntity.MCCScoreStandardDeviation = metrics.MCCScoreStandardDeviation;
+            performanceMetricsEntity.AccuracyBootStrapStandardDeviation = metrics.AccuracyBootStrapStandardDeviation;
+            performanceMetricsEntity.PrecisionBootStrapStandardDeviation = metrics.PrecisionBootStrapStandardDeviation;
+            performanceMetricsEntity.RecallBootStrapStandardDeviation = metrics.RecallBootStrapStandardDeviation;
+            performanceMetricsEntity.MCCScoreBootStrapStandardDeviation = metrics.MCCScoreStandardDeviation;
 
             // Persist in Azure Table Storage
             var addEntryOperation = TableOperation.InsertOrReplace(performanceMetricsEntity);
