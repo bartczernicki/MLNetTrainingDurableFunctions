@@ -121,11 +121,21 @@ namespace MLNetTrainingDurableFunctions
                     .Append(_mlContext.Transforms.NormalizeMinMax("Features", "FeaturesBeforeNormalization"));
 
                 var labelColunmn = "OnHallOfFameBallot";
-                // Build simple data pipeline
+
+#if RELEASE
+                // Build simple data pipeline, with LONGER learning
+                var learingPipeline =
+                    baselineTransform.Append(
+                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: 1000, learningRate: 0.001, maximumBinCountPerFeature: 500)
+                    );
+#else
+                // Build complex data pipeline, with SHORTER learning
                 var learingPipeline =
                     baselineTransform.Append(
                     _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: 75, learningRate: 0.05, maximumBinCountPerFeature: 75)
                     );
+#endif
+
                 log.LogInformation($"TrainModel - Created Pipeline validating MLB Batter {batter.ID} - {batter.FullPlayerName}.");
 
                 var model = learingPipeline.Fit(baseBallPlayerDataView);
