@@ -58,8 +58,8 @@ namespace MLNetTrainingDurableFunctions
                     recalls.Add(recall);
                     var accuracy = PerformanceMetrics.AccuracyCalculation(tps, tns, fps, fns);
                     accuracies.Add(accuracy);
-                    var f1Score = this.F1Score;
-                    accuracies.Add(f1Score);
+                    var f1Score = PerformanceMetrics.F1ScoreCalculation(tps, tns, fps, fns);
+                    f1Scores.Add(f1Score);
                 }
 
                 this.mccScoreStandarddDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(mccScores.Where(a => !Double.IsNaN(a)));
@@ -94,7 +94,7 @@ namespace MLNetTrainingDurableFunctions
         {
             get
             {
-                return 2.0 * (this.Precsion * this.Recall) / (this.Precsion + this.Recall);
+                return PerformanceMetrics.F1ScoreCalculation(this.tps, this.tns, this.fps, this.fns);
             }
         }
 
@@ -218,6 +218,16 @@ namespace MLNetTrainingDurableFunctions
             var mccScore = mccNumerator / mccDenominator;
 
             return mccScore;
+        }
+
+        public static double F1ScoreCalculation(int tps, int tns, int fps, int fns)
+        {
+            var precision = PerformanceMetrics.PrecisionCalculation(tps, tns, fps, fns);
+            var recall = PerformanceMetrics.RecallCalculation(tps, tns, fps, fns);
+
+            var f1Score = 2.0 * (precision * recall) / (precision + recall);
+
+            return f1Score;
         }
 
     }
