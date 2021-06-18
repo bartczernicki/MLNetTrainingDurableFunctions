@@ -25,6 +25,7 @@ namespace MLNetTrainingDurableFunctions
         // Info Variables
         private static int baseballPlayersCount = 0;
         private static List<MLBBaseballBatter> baseBallBatters;
+        private static List<string> featureTargetLabels = new List<string>{ "InductedToHallOfFame", "OnHallOfFameBallot" };
 
         // Thread-safe ML Context
         // private static MLContext _mlContext = new MLContext(seed: 200);
@@ -68,7 +69,7 @@ namespace MLNetTrainingDurableFunctions
         {
             var baseBallPlayers = await context.CallActivityAsync<List<MLBBaseballBatter>>("BaseballFunc_GetMLBBatters", null);
 
-            var tasks = new List<Task<string>>();
+            var tasks = new List<Task<PredictionResult>>();
 
             // For Debug process, smaller list of players. For Release, process full list
 #if RELEASE
@@ -80,18 +81,26 @@ namespace MLNetTrainingDurableFunctions
             baseballPlayersCount = baseBallPlayers.Count;
             log.LogInformation($"Orchestrator - MLB Batters Count: {baseballPlayersCount}");
 
-            foreach (var baseBallBatter in baseBallPlayers)
+            foreach (var featureLabelTarget in featureTargetLabels)
             {
-                // Add Train Model function activity
-                tasks.Add(context.CallActivityAsync<string>("BaseballFunc_TrainModel", input: baseBallBatter));
+                foreach (var baseBallBatter in baseBallPlayers)
+                {
+                    // Add Train Model function activity
+                    tasks.Add(context.CallActivityAsync<PredictionResult>("BaseballFunc_TrainModel",
+                        input: new MLNetTrainingFunctionInput
+                        {
+                            FeatureLabelTarget = featureLabelTarget,
+                            Batter = baseBallBatter
+                        }));
+                }
             }
 
             // Wait for all tasks to finish
             await Task.WhenAll(tasks);
-            var trainModelResults = tasks.Select(a => a.Result).ToList();
+            var predictionResults = tasks.Select(a => a.Result).ToList();
 
             // Calculate performance metrics
-            var result = await context.CallActivityAsync<List<MLBBaseballBatter>>("BaseballFunc_CalculatePerformanceMetrics", trainModelResults);
+            var result = await context.CallActivityAsync<List<MLBBaseballBatter>>("BaseballFunc_CalculatePerformanceMetrics", predictionResults);
 
             return 1;
         }
@@ -111,9 +120,11 @@ namespace MLNetTrainingDurableFunctions
         }
 
         [FunctionName("BaseballFunc_TrainModel")]
-        public static string MLNetTrainingTrainModel([ActivityTrigger] MLBBaseballBatter batter, ILogger log)
+        public static PredictionResult MLNetTrainingTrainModel([ActivityTrigger] MLNetTrainingFunctionInput mlNetTrainingFunctionInput, ILogger log)
         {
-            log.LogInformation($"TrainModel - Processing MLB Batter {batter.ID} - {batter.FullPlayerName}.");
+            var featureLabelTarget = mlNetTrainingFunctionInput.FeatureLabelTarget;
+
+            log.LogInformation($"TrainModel - {featureLabelTarget} - Processing MLB Batter {mlNetTrainingFunctionInput.Batter.ID} - {mlNetTrainingFunctionInput.Batter.FullPlayerName}.");
 
             var _mlContext = new MLContext(seed: 200);
 
@@ -123,96 +134,127 @@ namespace MLNetTrainingDurableFunctions
             {
                 // Load for ML.NET DataView, excluding the one MLB Batter
                 var baseBallPlayerDataView = _mlContext.Data.LoadFromEnumerable<MLBBaseballBatter>(
-                    baseballBatters.Where(a => a.ID != batter.ID)
+                    baseballBatters.Where(a => a.ID != mlNetTrainingFunctionInput.Batter.ID)
                     );
 
                 EstimatorChain<Microsoft.ML.Transforms.NormalizingTransformer> baselineTransform = _mlContext.Transforms.Concatenate("FeaturesBeforeNormalization", featureColumns)
                     .Append(_mlContext.Transforms.NormalizeMinMax("Features", "FeaturesBeforeNormalization"));
 
-                var labelColunmn = "OnHallOfFameBallot";
 
                 // Build simple data pipeline, with LONGER learning
                 var learingPipeline =
                     baselineTransform.Append(
-                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: labelColunmn, numberOfIterations: numberOfIterations, learningRate: learningRate, maximumBinCountPerFeature: maximumBinCountPerFeature)
+                    _mlContext.BinaryClassification.Trainers.Gam(labelColumnName: featureLabelTarget, numberOfIterations: numberOfIterations, learningRate: learningRate, maximumBinCountPerFeature: maximumBinCountPerFeature)
                     );
 
-                log.LogInformation($"TrainModel - Created Pipeline validating Gam Hyperparameters: Iterations: {numberOfIterations} LearningRate:{learningRate} MaxBinCountPerFeature:{maximumBinCountPerFeature}");
-                log.LogInformation($"TrainModel - Created Pipeline validating MLB Batter {batter.ID} - {batter.FullPlayerName}.");
+                log.LogInformation($"TrainModel - {featureLabelTarget} - Created Pipeline validating Gam Hyperparameters: Iterations: {numberOfIterations} LearningRate:{learningRate} MaxBinCountPerFeature:{maximumBinCountPerFeature}");
+                log.LogInformation($"TrainModel - {featureLabelTarget} - Created Pipeline validating MLB Batter {mlNetTrainingFunctionInput.Batter.ID} - {mlNetTrainingFunctionInput.Batter.FullPlayerName}.");
 
                 var model = learingPipeline.Fit(baseBallPlayerDataView);
-                log.LogInformation($"TrainModel - Created Model validating MLB Batter {batter.ID} - {batter.FullPlayerName}.");
+                log.LogInformation($"TrainModel - {featureLabelTarget} Created Model validating MLB Batter {mlNetTrainingFunctionInput.Batter.ID} - {mlNetTrainingFunctionInput.Batter.FullPlayerName}.");
 
                 var predictionEngine = _mlContext.Model.CreatePredictionEngine<MLBBaseballBatter, MLBHOFPrediction>(model);
-                var prediction = predictionEngine.Predict(batter);
-                log.LogInformation($"TrainModel - Prediction for MLB Batter {batter.ID} - {batter.FullPlayerName} || {prediction.Probability}");
+                var prediction = predictionEngine.Predict(mlNetTrainingFunctionInput.Batter);
+                log.LogInformation($"TrainModel - {featureLabelTarget} Prediction for MLB Batter {mlNetTrainingFunctionInput.Batter.ID} - {mlNetTrainingFunctionInput.Batter.FullPlayerName} || {prediction.Probability}");
 
-                string predictionResult = string.Empty;
+                string predictionClass = string.Empty;
 
-                if (batter.OnHallOfFameBallot && prediction.Probability >= 0.5f)
+                if (featureLabelTarget == "OnHallOfFameBallot")
                 {
-                    predictionResult = "TP";
+                    if (mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot && prediction.Probability >= 0.5f)
+                    {
+                        predictionClass = "TP";
+                    }
+                    else if (mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot && prediction.Probability < 0.5f)
+                    {
+                        predictionClass = "FN";
+                    }
+                    else if (!mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot && prediction.Probability < 0.5f)
+                    {
+                        predictionClass = "TN";
+                    }
+                    else if (!mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot && prediction.Probability >= 0.5f)
+                    {
+                        predictionClass = "FP";
+                    }
                 }
-                else if (batter.OnHallOfFameBallot && prediction.Probability < 0.5f)
+                else
                 {
-                    predictionResult = "FN";
-                }
-                else if (!batter.OnHallOfFameBallot && prediction.Probability < 0.5f)
-                {
-                    predictionResult = "TN";
-                }
-                else if (!batter.OnHallOfFameBallot && prediction.Probability >= 0.5f)
-                {
-                    predictionResult = "FP";
+                    if (mlNetTrainingFunctionInput.Batter.InductedToHallOfFame && prediction.Probability >= 0.5f)
+                    {
+                        predictionClass = "TP";
+                    }
+                    else if (mlNetTrainingFunctionInput.Batter.InductedToHallOfFame && prediction.Probability < 0.5f)
+                    {
+                        predictionClass = "FN";
+                    }
+                    else if (!mlNetTrainingFunctionInput.Batter.InductedToHallOfFame && prediction.Probability < 0.5f)
+                    {
+                        predictionClass = "TN";
+                    }
+                    else if (!mlNetTrainingFunctionInput.Batter.InductedToHallOfFame && prediction.Probability >= 0.5f)
+                    {
+                        predictionClass = "FP";
+                    }
                 }
 
-                log.LogInformation($"TrainModel - Prediction for MLB Batter {batter.ID} - {batter.FullPlayerName} ||" +
-                    $" OnHallOfFameBallot: {batter.OnHallOfFameBallot}, Prediction Result: {predictionResult}");
+                var predictionResult = new PredictionResult { FeatureLabelTarget = featureLabelTarget, PredictionClass = predictionClass, Probability = prediction.Probability };
+
+                log.LogInformation($"TrainModel - {featureLabelTarget} - Prediction for MLB Batter {mlNetTrainingFunctionInput.Batter.ID} - {mlNetTrainingFunctionInput.Batter.FullPlayerName} ||" +
+                    $" OnHallOfFameBallot: {mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot}, Prediction Result: {predictionClass}");
 
                 return predictionResult;
             }
             else
             {
                 log.LogInformation($"TrainModel - Batters data NULL.");
+                var predictionResult = new PredictionResult { FeatureLabelTarget = featureLabelTarget, PredictionClass = "NA", Probability = Double.NaN };
 
-                return string.Empty;
+                return predictionResult;
             }
         }
 
         [FunctionName("BaseballFunc_CalculatePerformanceMetrics")]
-        public static async Task<string> MLNetTrainingCalculatePerformanceMetrics([ActivityTrigger] List<string> matrixPerformanceResults,
+        public static async Task<string> MLNetTrainingCalculatePerformanceMetrics([ActivityTrigger] List<PredictionResult> predictionResults,
             [Table("BaseballMlNetTrainingPerformanceMetrics")] CloudTable performanceMetricsTable,
             ILogger log)
         {
             log.LogInformation($"CalculatePerformanceMetrics - Calculating Performance Results...");
 
-            // Calculate performance metrics & bootstrap standard deviations to calculate confidence intervals
-            var metrics = new PerformanceMetrics(matrixPerformanceResults, true, 500);
+            var featureTargetLabels = predictionResults.Select(a => a.FeatureLabelTarget).Distinct().ToList();
 
-            var performanceMetricsEntity = new TrainingJobPerformanceMetrics("Test", "Gam");
-            performanceMetricsEntity.HyperParameters = $"Iterations: {numberOfIterations} LearningRate:{learningRate} MaxBinCountPerFeature: {maximumBinCountPerFeature}";
-            performanceMetricsEntity.TruePositives = metrics.TruePositives;
-            performanceMetricsEntity.TrueNegatives = metrics.TrueNegatives;
-            performanceMetricsEntity.FalseNegatives = metrics.FalseNegatives;
-            performanceMetricsEntity.FalsePositives = metrics.FalsePositives;
-            performanceMetricsEntity.Accuracy = metrics.Accuracy;
-            performanceMetricsEntity.Precision = metrics.Precsion;
-            performanceMetricsEntity.Recall = metrics.Recall;
-            performanceMetricsEntity.MCCScore = metrics.MCCScore;
-            performanceMetricsEntity.F1Score = metrics.F1Score;
-            performanceMetricsEntity.AccuracyBootStrapStandardDeviation = metrics.AccuracyBootStrapStandardDeviation;
-            performanceMetricsEntity.PrecisionBootStrapStandardDeviation = metrics.PrecisionBootStrapStandardDeviation;
-            performanceMetricsEntity.RecallBootStrapStandardDeviation = metrics.RecallBootStrapStandardDeviation;
-            performanceMetricsEntity.MCCScoreBootStrapStandardDeviation = metrics.MCCScoreStandardDeviation;
-            performanceMetricsEntity.F1ScoreBootStrapStandardDeviation = metrics.F1ScoreStandardDeviation;
+            foreach (var featureTargetLabel in featureTargetLabels)
+            {
+                var classficationMatrix = predictionResults.Where(a => a.FeatureLabelTarget == featureTargetLabel).Select(m => m.PredictionClass).ToList();
 
-            // Persist in Azure Table Storage
-            var addEntryOperation = TableOperation.InsertOrReplace(performanceMetricsEntity);
-            performanceMetricsTable.CreateIfNotExists();
-            await performanceMetricsTable.ExecuteAsync(addEntryOperation);
+                // Calculate performance metrics & bootstrap standard deviations to calculate confidence intervals
+                var metrics = new PerformanceMetrics(classficationMatrix, true, 500);
 
-            log.LogInformation($"Orchestrator - Predictions Matrix: TP:{metrics.TruePositives} TN:{metrics.TrueNegatives} FP:{metrics.FalsePositives} FN:{metrics.FalseNegatives}.");
-            log.LogInformation($"Orchestrator - Performance Metrics: MCC Score:{metrics.MCCScore} Precision:{metrics.Precsion} Recall:{metrics.Recall}.");
+                var performanceMetricsEntity = new TrainingJobPerformanceMetrics(featureTargetLabel, "Gam");
+                performanceMetricsEntity.HyperParameters = $"Iterations: {numberOfIterations} LearningRate:{learningRate} MaxBinCountPerFeature: {maximumBinCountPerFeature}";
+                performanceMetricsEntity.TruePositives = metrics.TruePositives;
+                performanceMetricsEntity.TrueNegatives = metrics.TrueNegatives;
+                performanceMetricsEntity.FalseNegatives = metrics.FalseNegatives;
+                performanceMetricsEntity.FalsePositives = metrics.FalsePositives;
+                performanceMetricsEntity.Accuracy = metrics.Accuracy;
+                performanceMetricsEntity.Precision = metrics.Precsion;
+                performanceMetricsEntity.Recall = metrics.Recall;
+                performanceMetricsEntity.MCCScore = metrics.MCCScore;
+                performanceMetricsEntity.F1Score = metrics.F1Score;
+                performanceMetricsEntity.AccuracyBootStrapStandardDeviation = metrics.AccuracyBootStrapStandardDeviation;
+                performanceMetricsEntity.PrecisionBootStrapStandardDeviation = metrics.PrecisionBootStrapStandardDeviation;
+                performanceMetricsEntity.RecallBootStrapStandardDeviation = metrics.RecallBootStrapStandardDeviation;
+                performanceMetricsEntity.MCCScoreBootStrapStandardDeviation = metrics.MCCScoreStandardDeviation;
+                performanceMetricsEntity.F1ScoreBootStrapStandardDeviation = metrics.F1ScoreStandardDeviation;
+
+                // Persist in Azure Table Storage
+                var addEntryOperation = TableOperation.InsertOrReplace(performanceMetricsEntity);
+                performanceMetricsTable.CreateIfNotExists();
+                await performanceMetricsTable.ExecuteAsync(addEntryOperation);
+
+                log.LogInformation($"Orchestrator - Predictions Matrix: TP:{metrics.TruePositives} TN:{metrics.TrueNegatives} FP:{metrics.FalsePositives} FN:{metrics.FalseNegatives}.");
+                log.LogInformation($"Orchestrator - Performance Metrics: MCC Score:{metrics.MCCScore} Precision:{metrics.Precsion} Recall:{metrics.Recall}.");
+            }
 
             return string.Empty;
         }
