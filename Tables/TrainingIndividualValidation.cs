@@ -13,6 +13,8 @@ namespace MLNetTrainingDurableFunctions.Tables
             this.RowKey = baseballBatterIdentifier;
         }
 
+        public string FullPlayerName { get; set; }
+
         public bool InductedToHallOfFame { get; set; }
 
         public bool OnHallOfFameBallot { get; set; }

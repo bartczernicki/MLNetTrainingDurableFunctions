@@ -120,8 +120,8 @@ namespace MLNetTrainingDurableFunctions
         }
 
         [FunctionName("BaseballFunc_TrainModel")]
-        public static PredictionResult MLNetTrainingTrainModel([ActivityTrigger] MLNetTrainingFunctionInput mlNetTrainingFunctionInput,
-                        [Table("BaseballMlNetTrainingIndividualValidation")] CloudTable performanceMetricsTable,
+        public static async Task<PredictionResult> MLNetTrainingTrainModel([ActivityTrigger] MLNetTrainingFunctionInput mlNetTrainingFunctionInput,
+                        [Table("BaseballMlNetTrainingIndividualValidation")] CloudTable individualValidationTable,
                         ILogger log)
         {
             var featureLabelTarget = mlNetTrainingFunctionInput.FeatureLabelTarget;
@@ -207,6 +207,18 @@ namespace MLNetTrainingDurableFunctions
                 }
 
                 var predictionResult = new PredictionResult { FeatureLabelTarget = featureLabelTarget, PredictionClass = predictionClass, Probability = prediction.Probability };
+
+                var individualValidationEntity = new TrainingIndividualValidation(featureLabelTarget, $"Batter ID: {mlNetTrainingFunctionInput.Batter.ID}");
+                individualValidationEntity.FullPlayerName = mlNetTrainingFunctionInput.Batter.FullPlayerName;
+                individualValidationEntity.InductedToHallOfFame = mlNetTrainingFunctionInput.Batter.InductedToHallOfFame;
+                individualValidationEntity.OnHallOfFameBallot = mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot;
+                individualValidationEntity.PredictionClass = predictionClass;
+                individualValidationEntity.PredictionProbability = prediction.Probability;
+
+                // Persist in Azure Table Storage
+                var addEntryOperation = TableOperation.InsertOrReplace(individualValidationEntity);
+                individualValidationTable.CreateIfNotExists();
+                await individualValidationTable.ExecuteAsync(addEntryOperation);
 
                 return predictionResult;
             }
