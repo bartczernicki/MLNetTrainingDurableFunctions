@@ -25,24 +25,34 @@ namespace MLNetTrainingDurableFunctions.Tables
 
         public int FalseNegatives { get; set; }
 
-        public double Accuracy { get; set; }
+        public double ValidationDataAccuracy { get; set; }
 
-        public double Precision { get; set; }
+        public double ValidationDataPrecision { get; set; }
 
-        public double Recall { get; set; }
+        public double ValidationDataRecall { get; set; }
 
-        public double MCCScore { get; set; }
+        public double ValidationDataMCCScore { get; set; }
 
-        public double F1Score { get; set; }
+        public double ValidationDataF1Score { get; set; }
 
-        public double AccuracyBootStrapStandardDeviation { get; set; }
+        public double BootstrapAccuracyMean { get; set; }
 
-        public double PrecisionBootStrapStandardDeviation { get; set; }
+        public double BootstrapPrecisionMean { get; set; }
 
-        public double RecallBootStrapStandardDeviation { get; set; }
+        public double BootstrapRecallMean { get; set; }
 
-        public double MCCScoreBootStrapStandardDeviation { get; set; }
+        public double BootstrapMCCScoreMean { get; set; }
 
-        public double F1ScoreBootStrapStandardDeviation { get; set; }
+        public double BootstrapF1ScoreMean { get; set; }
+
+        public double BootstrapAccuracyStandardDeviation { get; set; }
+
+        public double BootstrapPrecisionStandardDeviation { get; set; }
+
+        public double BootstrapRecallStandardDeviation { get; set; }
+
+        public double BootstrapMCCScoreStandardDeviation { get; set; }
+
+        public double BootstrapF1ScoreStandardDeviation { get; set; }
     }
 }

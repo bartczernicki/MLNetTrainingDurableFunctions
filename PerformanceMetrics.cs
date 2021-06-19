@@ -9,7 +9,8 @@ namespace MLNetTrainingDurableFunctions
     {
         // classification matrix variables
         int tps, tns, fps, fns = 0;
-        double mccScoreStandarddDev, accuracyStandarddDev, precisionStandarddDev, recallStandarddDev, f1ScoresStandardDev = 0.0;
+        double bootstrapMCCScoreStandarddDev, bootstrapAccuracyStandarddDev, bootstrapPrecisionStandarddDev, bootstrapRecallStandarddDev, bootstrapF1ScoresStandardDev = 0.0;
+        double bootstrapMCCScoreMean, bootstrapAccuracyMean, bootstrapPrecisionMean, bootstrapRecallMean, bootstrapF1ScoresMean = 0.0;
 
         List<string> classificationMatrix = new List<string>(100);
 
@@ -62,16 +63,16 @@ namespace MLNetTrainingDurableFunctions
                     f1Scores.Add(f1Score);
                 }
 
-                this.mccScoreStandarddDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(mccScores.Where(a => !Double.IsNaN(a)));
-                var mccScoreAverage = MathNet.Numerics.Statistics.Statistics.Mean(mccScores.Where(a => !Double.IsNaN(a)));
-                this.precisionStandarddDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(precisions.Where(a => !Double.IsNaN(a)));
-                var precisionAverage = MathNet.Numerics.Statistics.Statistics.Mean(precisions.Where(a => !Double.IsNaN(a)));
-                this.accuracyStandarddDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(accuracies.Where(a => !Double.IsNaN(a)));
-                var accuracyAverage = MathNet.Numerics.Statistics.Statistics.Mean(accuracies.Where(a => !Double.IsNaN(a)));
-                this.recallStandarddDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(recalls.Where(a => !Double.IsNaN(a)));
-                var recallAverage = MathNet.Numerics.Statistics.Statistics.Mean(recalls.Where(a => !Double.IsNaN(a)));
-                this.f1ScoresStandardDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(f1Scores.Where(a => !Double.IsNaN(a)));
-                var f1ScoreAverage = MathNet.Numerics.Statistics.Statistics.Mean(f1Scores.Where(a => !Double.IsNaN(a)));
+                this.bootstrapMCCScoreStandarddDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(mccScores.Where(a => !Double.IsNaN(a)));
+                this.bootstrapMCCScoreMean = MathNet.Numerics.Statistics.Statistics.Mean(mccScores.Where(a => !Double.IsNaN(a)));
+                this.bootstrapPrecisionStandarddDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(precisions.Where(a => !Double.IsNaN(a)));
+                this.bootstrapPrecisionMean = MathNet.Numerics.Statistics.Statistics.Mean(precisions.Where(a => !Double.IsNaN(a)));
+                this.bootstrapAccuracyStandarddDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(accuracies.Where(a => !Double.IsNaN(a)));
+                this.bootstrapAccuracyMean = MathNet.Numerics.Statistics.Statistics.Mean(accuracies.Where(a => !Double.IsNaN(a)));
+                this.bootstrapRecallStandarddDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(recalls.Where(a => !Double.IsNaN(a)));
+                this.bootstrapRecallMean = MathNet.Numerics.Statistics.Statistics.Mean(recalls.Where(a => !Double.IsNaN(a)));
+                this.bootstrapF1ScoresStandardDev = MathNet.Numerics.Statistics.Statistics.StandardDeviation(f1Scores.Where(a => !Double.IsNaN(a)));
+                this.bootstrapF1ScoresMean = MathNet.Numerics.Statistics.Statistics.Mean(f1Scores.Where(a => !Double.IsNaN(a)));
             }
         }
 
@@ -82,11 +83,19 @@ namespace MLNetTrainingDurableFunctions
             }
         }
 
-        public double AccuracyBootStrapStandardDeviation
+        public double BootstrapAccuracyMean
         {
             get
             {
-                return this.accuracyStandarddDev;
+                return this.bootstrapAccuracyMean;
+            }
+        }
+
+        public double BootstrapAccuracyStandardDeviation
+        {
+            get
+            {
+                return this.bootstrapAccuracyStandarddDev;
             }
         }
 
@@ -98,11 +107,19 @@ namespace MLNetTrainingDurableFunctions
             }
         }
 
-        public double F1ScoreStandardDeviation
+        public double BootstrapF1ScoreMean
         {
             get
             {
-                return this.f1ScoresStandardDev;
+                return this.bootstrapF1ScoresMean;
+            }
+        }
+
+        public double BootstrapF1ScoreStandardDeviation
+        {
+            get
+            {
+                return this.bootstrapF1ScoresStandardDev;
             }
         }
 
@@ -114,11 +131,19 @@ namespace MLNetTrainingDurableFunctions
             }
         }
 
-        public double MCCScoreStandardDeviation
+        public double BootstrapMCCScoreMean
         {
             get
             {
-                return this.mccScoreStandarddDev;
+                return this.bootstrapMCCScoreMean;
+            }
+        }
+
+        public double BootstrapMCCScoreStandardDeviation
+        {
+            get
+            {
+                return this.bootstrapMCCScoreStandarddDev;
             }
         }
 
@@ -130,11 +155,19 @@ namespace MLNetTrainingDurableFunctions
             }
         }
 
-        public double PrecisionBootStrapStandardDeviation
+        public double BootstrapPrecisionMean
         {
             get
             {
-                return this.precisionStandarddDev;
+                return this.bootstrapPrecisionMean;
+            }
+        }
+
+        public double BootstrapPrecisionStandardDeviation
+        {
+            get
+            {
+                return this.bootstrapPrecisionStandarddDev;
             }
         }
 
@@ -146,11 +179,19 @@ namespace MLNetTrainingDurableFunctions
             }
         }
 
-        public double RecallBootStrapStandardDeviation
+        public double BootStrapRecallMean
         {
             get
             {
-                return this.recallStandarddDev;
+                return this.bootstrapRecallMean;
+            }
+        }
+
+        public double BootStrapRecallStandardDeviation
+        {
+            get
+            {
+                return this.bootstrapRecallStandarddDev;
             }
         }
 

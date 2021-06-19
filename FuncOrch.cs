@@ -236,16 +236,21 @@ namespace MLNetTrainingDurableFunctions
                 performanceMetricsEntity.TrueNegatives = metrics.TrueNegatives;
                 performanceMetricsEntity.FalseNegatives = metrics.FalseNegatives;
                 performanceMetricsEntity.FalsePositives = metrics.FalsePositives;
-                performanceMetricsEntity.Accuracy = metrics.Accuracy;
-                performanceMetricsEntity.Precision = metrics.Precsion;
-                performanceMetricsEntity.Recall = metrics.Recall;
-                performanceMetricsEntity.MCCScore = metrics.MCCScore;
-                performanceMetricsEntity.F1Score = metrics.F1Score;
-                performanceMetricsEntity.AccuracyBootStrapStandardDeviation = metrics.AccuracyBootStrapStandardDeviation;
-                performanceMetricsEntity.PrecisionBootStrapStandardDeviation = metrics.PrecisionBootStrapStandardDeviation;
-                performanceMetricsEntity.RecallBootStrapStandardDeviation = metrics.RecallBootStrapStandardDeviation;
-                performanceMetricsEntity.MCCScoreBootStrapStandardDeviation = metrics.MCCScoreStandardDeviation;
-                performanceMetricsEntity.F1ScoreBootStrapStandardDeviation = metrics.F1ScoreStandardDeviation;
+                performanceMetricsEntity.ValidationDataAccuracy = metrics.Accuracy;
+                performanceMetricsEntity.ValidationDataPrecision = metrics.Precsion;
+                performanceMetricsEntity.ValidationDataRecall = metrics.Recall;
+                performanceMetricsEntity.ValidationDataMCCScore = metrics.MCCScore;
+                performanceMetricsEntity.ValidationDataF1Score = metrics.F1Score;
+                performanceMetricsEntity.BootstrapAccuracyStandardDeviation = metrics.BootstrapAccuracyStandardDeviation;
+                performanceMetricsEntity.BootstrapPrecisionStandardDeviation = metrics.BootstrapPrecisionStandardDeviation;
+                performanceMetricsEntity.BootstrapRecallStandardDeviation = metrics.BootStrapRecallStandardDeviation;
+                performanceMetricsEntity.BootstrapF1ScoreStandardDeviation = metrics.BootstrapF1ScoreStandardDeviation;
+                performanceMetricsEntity.BootstrapMCCScoreStandardDeviation = metrics.BootstrapMCCScoreStandardDeviation;
+                performanceMetricsEntity.BootstrapAccuracyMean = metrics.BootstrapAccuracyMean;
+                performanceMetricsEntity.BootstrapPrecisionMean = metrics.BootstrapPrecisionMean;
+                performanceMetricsEntity.BootstrapRecallMean = metrics.BootStrapRecallMean;
+                performanceMetricsEntity.BootstrapF1ScoreMean = metrics.BootstrapF1ScoreMean;
+                performanceMetricsEntity.BootstrapMCCScoreMean = metrics.BootstrapMCCScoreMean;
 
                 // Persist in Azure Table Storage
                 var addEntryOperation = TableOperation.InsertOrReplace(performanceMetricsEntity);
