@@ -75,7 +75,7 @@ namespace MLNetTrainingDurableFunctions
 #if RELEASE
             log.LogInformation($"Orchestrator - Release Mode (full data).");
 #else
-            baseBallPlayers = baseBallPlayers.Take(200).ToList();
+            baseBallPlayers = baseBallPlayers.Take(100).ToList();
 #endif
 
             baseballPlayersCount = baseBallPlayers.Count;
@@ -120,7 +120,9 @@ namespace MLNetTrainingDurableFunctions
         }
 
         [FunctionName("BaseballFunc_TrainModel")]
-        public static PredictionResult MLNetTrainingTrainModel([ActivityTrigger] MLNetTrainingFunctionInput mlNetTrainingFunctionInput, ILogger log)
+        public static PredictionResult MLNetTrainingTrainModel([ActivityTrigger] MLNetTrainingFunctionInput mlNetTrainingFunctionInput,
+                        [Table("BaseballMlNetTrainingIndividualValidation")] CloudTable performanceMetricsTable,
+                        ILogger log)
         {
             var featureLabelTarget = mlNetTrainingFunctionInput.FeatureLabelTarget;
 
@@ -177,6 +179,9 @@ namespace MLNetTrainingDurableFunctions
                     {
                         predictionClass = "FP";
                     }
+
+                    log.LogInformation($"TrainModel - {featureLabelTarget} - Prediction for MLB Batter {mlNetTrainingFunctionInput.Batter.ID} - {mlNetTrainingFunctionInput.Batter.FullPlayerName} ||" +
+                        $" OnHallOfFameBallot: {mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot}, Prediction Result: {predictionClass}");
                 }
                 else
                 {
@@ -196,12 +201,12 @@ namespace MLNetTrainingDurableFunctions
                     {
                         predictionClass = "FP";
                     }
+
+                    log.LogInformation($"TrainModel - {featureLabelTarget} - Prediction for MLB Batter {mlNetTrainingFunctionInput.Batter.ID} - {mlNetTrainingFunctionInput.Batter.FullPlayerName} ||" +
+                        $" InductedToHallOfFame: {mlNetTrainingFunctionInput.Batter.InductedToHallOfFame}, Prediction Result: {predictionClass}");
                 }
 
                 var predictionResult = new PredictionResult { FeatureLabelTarget = featureLabelTarget, PredictionClass = predictionClass, Probability = prediction.Probability };
-
-                log.LogInformation($"TrainModel - {featureLabelTarget} - Prediction for MLB Batter {mlNetTrainingFunctionInput.Batter.ID} - {mlNetTrainingFunctionInput.Batter.FullPlayerName} ||" +
-                    $" OnHallOfFameBallot: {mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot}, Prediction Result: {predictionClass}");
 
                 return predictionResult;
             }
@@ -230,7 +235,7 @@ namespace MLNetTrainingDurableFunctions
                 // Calculate performance metrics & bootstrap standard deviations to calculate confidence intervals
                 var metrics = new PerformanceMetrics(classficationMatrix, true, 500);
 
-                var performanceMetricsEntity = new TrainingJobPerformanceMetrics(featureTargetLabel, "Gam");
+                var performanceMetricsEntity = new TrainingPerformanceMetrics(featureTargetLabel, $"Algorithm: Gam; Data: MLBBaseballBattersFullTraining=2020; Iterations: {numberOfIterations} LearningRate:{learningRate} MaxBinCountPerFeature: {maximumBinCountPerFeature}");
                 performanceMetricsEntity.HyperParameters = $"Iterations: {numberOfIterations} LearningRate:{learningRate} MaxBinCountPerFeature: {maximumBinCountPerFeature}";
                 performanceMetricsEntity.TruePositives = metrics.TruePositives;
                 performanceMetricsEntity.TrueNegatives = metrics.TrueNegatives;

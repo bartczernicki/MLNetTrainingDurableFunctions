@@ -5,15 +5,15 @@ using System.Text;
 
 namespace MLNetTrainingDurableFunctions.Tables
 {
-    public class TrainingJobPerformanceMetrics : TableEntity
+    public class TrainingPerformanceMetrics : TableEntity
     {
-        public TrainingJobPerformanceMetrics(string JobName, string Algorithm)
+        public TrainingPerformanceMetrics(string TrainingLabel, string modelIdentifier)
         {
-            this.PartitionKey = JobName;
-            this.RowKey = Algorithm;
+            this.PartitionKey = TrainingLabel;
+            this.RowKey = modelIdentifier;
         }
 
-        public TrainingJobPerformanceMetrics() { }
+        public TrainingPerformanceMetrics() { }
 
         public string HyperParameters { get; set; }
 
