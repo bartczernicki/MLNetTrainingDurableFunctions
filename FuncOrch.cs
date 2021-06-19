@@ -257,8 +257,8 @@ namespace MLNetTrainingDurableFunctions
                 performanceMetricsTable.CreateIfNotExists();
                 await performanceMetricsTable.ExecuteAsync(addEntryOperation);
 
-                log.LogInformation($"Orchestrator - Predictions Matrix: TP:{metrics.TruePositives} TN:{metrics.TrueNegatives} FP:{metrics.FalsePositives} FN:{metrics.FalseNegatives}.");
-                log.LogInformation($"Orchestrator - Performance Metrics: MCC Score:{metrics.MCCScore} Precision:{metrics.Precsion} Recall:{metrics.Recall}.");
+                log.LogInformation($"CalculatePerformanceMetrics - {featureTargetLabel} - Predictions Matrix: TP:{metrics.TruePositives} TN:{metrics.TrueNegatives} FP:{metrics.FalsePositives} FN:{metrics.FalseNegatives}");
+                log.LogInformation($"CalculatePerformanceMetrics - {featureTargetLabel} - Performance Metrics: MCC Score:{metrics.MCCScore} Precision:{metrics.Precsion} Recall:{metrics.Recall}");
             }
 
             return string.Empty;
