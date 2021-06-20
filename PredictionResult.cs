@@ -10,6 +10,6 @@ namespace MLNetTrainingDurableFunctions
 
         public double Probability { get; set; }
 
-        public string PredictionClass { get; set; }
+        public string ConfusionMatrixPredictionClass { get; set; }
     }
 }

@@ -19,7 +19,7 @@ namespace MLNetTrainingDurableFunctions.Tables
 
         public bool OnHallOfFameBallot { get; set; }
 
-        public string PredictionClass { get; set; }
+        public string ConfusionMatrixPredictionClass { get; set; }
 
         public double PredictionProbability { get; set; }
     }

@@ -159,60 +159,61 @@ namespace MLNetTrainingDurableFunctions
                 var prediction = predictionEngine.Predict(mlNetTrainingFunctionInput.Batter);
                 log.LogInformation($"TrainModel - {featureLabelTarget} Prediction for MLB Batter {mlNetTrainingFunctionInput.Batter.ID} - {mlNetTrainingFunctionInput.Batter.FullPlayerName} || {prediction.Probability}");
 
-                string predictionClass = string.Empty;
+                string confusionMatrixPredictionClass = string.Empty;
 
                 if (featureLabelTarget == "OnHallOfFameBallot")
                 {
                     if (mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot && prediction.Probability >= 0.5f)
                     {
-                        predictionClass = "TP";
+                        confusionMatrixPredictionClass = "TP";
                     }
                     else if (mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot && prediction.Probability < 0.5f)
                     {
-                        predictionClass = "FN";
+                        confusionMatrixPredictionClass = "FN";
                     }
                     else if (!mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot && prediction.Probability < 0.5f)
                     {
-                        predictionClass = "TN";
+                        confusionMatrixPredictionClass = "TN";
                     }
                     else if (!mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot && prediction.Probability >= 0.5f)
                     {
-                        predictionClass = "FP";
+                        confusionMatrixPredictionClass = "FP";
                     }
 
                     log.LogInformation($"TrainModel - {featureLabelTarget} - Prediction for MLB Batter {mlNetTrainingFunctionInput.Batter.ID} - {mlNetTrainingFunctionInput.Batter.FullPlayerName} ||" +
-                        $" OnHallOfFameBallot: {mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot}, Prediction Result: {predictionClass}");
+                        $" OnHallOfFameBallot: {mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot}, Prediction Result: {confusionMatrixPredictionClass}");
                 }
                 else
                 {
                     if (mlNetTrainingFunctionInput.Batter.InductedToHallOfFame && prediction.Probability >= 0.5f)
                     {
-                        predictionClass = "TP";
+                        confusionMatrixPredictionClass = "TP";
                     }
                     else if (mlNetTrainingFunctionInput.Batter.InductedToHallOfFame && prediction.Probability < 0.5f)
                     {
-                        predictionClass = "FN";
+                        confusionMatrixPredictionClass = "FN";
                     }
                     else if (!mlNetTrainingFunctionInput.Batter.InductedToHallOfFame && prediction.Probability < 0.5f)
                     {
-                        predictionClass = "TN";
+                        confusionMatrixPredictionClass = "TN";
                     }
                     else if (!mlNetTrainingFunctionInput.Batter.InductedToHallOfFame && prediction.Probability >= 0.5f)
                     {
-                        predictionClass = "FP";
+                        confusionMatrixPredictionClass = "FP";
                     }
 
                     log.LogInformation($"TrainModel - {featureLabelTarget} - Prediction for MLB Batter {mlNetTrainingFunctionInput.Batter.ID} - {mlNetTrainingFunctionInput.Batter.FullPlayerName} ||" +
-                        $" InductedToHallOfFame: {mlNetTrainingFunctionInput.Batter.InductedToHallOfFame}, Prediction Result: {predictionClass}");
+                        $" InductedToHallOfFame: {mlNetTrainingFunctionInput.Batter.InductedToHallOfFame}, Prediction Result: {confusionMatrixPredictionClass}");
                 }
 
-                var predictionResult = new PredictionResult { FeatureLabelTarget = featureLabelTarget, PredictionClass = predictionClass, Probability = prediction.Probability };
+                var predictionResult = new PredictionResult { FeatureLabelTarget = featureLabelTarget, ConfusionMatrixPredictionClass = confusionMatrixPredictionClass, Probability = prediction.Probability };
 
-                var individualValidationEntity = new TrainingIndividualValidation(featureLabelTarget, $"Batter ID: {mlNetTrainingFunctionInput.Batter.ID}");
+                var individualValidationEntity = new TrainingIndividualValidation(featureLabelTarget,
+                    $"Batter ID: {mlNetTrainingFunctionInput.Batter.ID}; Algorithm: Gam; Data: MLBBaseballBattersFullTraining=2020; Iterations: {numberOfIterations} LearningRate:{learningRate} MaxBinCountPerFeature: {maximumBinCountPerFeature}");
                 individualValidationEntity.FullPlayerName = mlNetTrainingFunctionInput.Batter.FullPlayerName;
                 individualValidationEntity.InductedToHallOfFame = mlNetTrainingFunctionInput.Batter.InductedToHallOfFame;
                 individualValidationEntity.OnHallOfFameBallot = mlNetTrainingFunctionInput.Batter.OnHallOfFameBallot;
-                individualValidationEntity.PredictionClass = predictionClass;
+                individualValidationEntity.ConfusionMatrixPredictionClass = confusionMatrixPredictionClass;
                 individualValidationEntity.PredictionProbability = prediction.Probability;
 
                 // Persist in Azure Table Storage
@@ -225,7 +226,7 @@ namespace MLNetTrainingDurableFunctions
             else
             {
                 log.LogInformation($"TrainModel - Batters data NULL.");
-                var predictionResult = new PredictionResult { FeatureLabelTarget = featureLabelTarget, PredictionClass = "NA", Probability = Double.NaN };
+                var predictionResult = new PredictionResult { FeatureLabelTarget = featureLabelTarget, ConfusionMatrixPredictionClass = "NA", Probability = Double.NaN };
 
                 return predictionResult;
             }
@@ -242,7 +243,7 @@ namespace MLNetTrainingDurableFunctions
 
             foreach (var featureTargetLabel in featureTargetLabels)
             {
-                var classficationMatrix = predictionResults.Where(a => a.FeatureLabelTarget == featureTargetLabel).Select(m => m.PredictionClass).ToList();
+                var classficationMatrix = predictionResults.Where(a => a.FeatureLabelTarget == featureTargetLabel).Select(m => m.ConfusionMatrixPredictionClass).ToList();
 
                 // Calculate performance metrics & bootstrap standard deviations to calculate confidence intervals
                 var metrics = new PerformanceMetrics(classficationMatrix, true, 500);
