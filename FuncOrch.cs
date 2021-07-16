@@ -1,27 +1,21 @@
+using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.IO;
-using System.Net.Http;
-using System.Threading.Tasks;
-using System.Linq;
-using Microsoft.Azure.Storage.Blob;
-using System.Runtime.Caching;
-using System;
-using System.Reflection;
 using Microsoft.ML;
 using Microsoft.ML.Data;
-using Microsoft.Azure.Cosmos.Table;
 using MLNetTrainingDurableFunctions.Tables;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace MLNetTrainingDurableFunctions
 {
     public static class FuncOrch
     {
-        static MemoryCache memoryCacheTest = new MemoryCache("TrainingData");
-
         // Info Variables
         private static int baseballPlayersCount = 0;
         private static List<MLBBaseballBatter> baseBallBatters;
