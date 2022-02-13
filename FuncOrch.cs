@@ -21,6 +21,7 @@ namespace MLNetTrainingDurableFunctions
         private static List<MLBBaseballBatter> baseBallBatters;
         private static List<string> featureTargetLabels = new List<string>{ "InductedToHallOfFame", "OnHallOfFameBallot" };
 
+
         // Thread-safe ML Context
         // private static MLContext _mlContext = new MLContext(seed: 200);
 
